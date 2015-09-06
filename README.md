@@ -1,4 +1,4 @@
-# websql
+# sql-scratchpad
 
 Experiment with sqlite in your browser.
 
