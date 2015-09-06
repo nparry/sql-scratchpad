@@ -114,7 +114,7 @@
 
     worker.postMessage({action: 'open'});
     $(window.location.search.substring(1).split('&')).each(function(idx, p) {
-      if (p.startsWith('seed=')) {
+      if (p.indexOf('seed=') == 0) {
         $.get(p.split('=')[1], function(data) {
           runSql(data);
           //runSqlFromEditor();
