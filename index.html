@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>SQL in your Browser</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.6.0/codemirror.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+  <style>
+    div.CodeMirror {
+      border: 1px solid #ddd;
+    }
+
+    button {
+      margin-top: 1em;
+      margin-bottom: 1em !important;
+    }
+
+    #errorResult {
+      color: red;
+    }
+  </style>
+</head>
+<body class="container">
+  <h1 class="page-header">
+    SQL in your Browser!
+    <small>Based on <a href="https://github.com/kripken/sql.js">sql.js by kripken</a></small>
+  </h1>
+
+  <main>
+    <h4>Enter your SQL here:</h4>
+    <textarea id="userInput"></textarea>
+
+    <div>
+      <button class="btn btn-default">
+        <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
+        Execute
+      </button>
+    </div>
+
+    <h4>Results:</h4>
+    <pre id="errorResult" style="display: none"></pre>
+    <div id="queryResult"></div>
+  </main>
+
+  <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.6.0/codemirror.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.6.0/mode/sql/sql.js"></script>
+  <script src="js/worker.sql.js"></script>
+  <script>
+    var
+      worker = new Worker('js/worker.sql.js'),
+      editor = CodeMirror.fromTextArea($('#userInput')[0], {
+        mode: 'text/x-mysql',
+        viewportMargin: Infinity,
+        indentWithTabs: true,
+        smartIndent: true,
+        lineNumbers: true,
+        matchBrackets : true,
+        autofocus: true,
+        extraKeys: {
+          'Ctrl-Enter': runSqlFromEditor
+        }
+      });
+
+    $('button').on('click', runSqlFromEditor);
+
+    function runSqlFromEditor() {
+      runSql(editor.getValue() + ';');
+    }
+
+    function runSql(sql) {
+      worker.postMessage({action: 'exec', sql: sql });
+    }
+
+    worker.onmessage = function(event) {
+      $('#errorResult').hide();
+      $('#queryResult').show().empty();
+      if (event.data.results && event.data.results.length > 0) {
+        $(event.data.results).each(function(idx, result) {
+          $('#queryResult').append(createTable(result.columns, result.values));
+        });
+      }
+      else {
+        $('#queryResult').text('Query returned no results');
+      }
+    }
+
+    worker.onerror = function(e) {
+      $('#queryResult').hide();
+      $('#errorResult').show().text(e.message);
+    }
+
+    function createTable(headings, rows) {
+      var table  = $('<table class="table table-striped">');
+
+      var header = $('<thead>');
+      table.append(header);
+      $(headings).each(function(idx, col) { header.append($('<th>').text(col)); });
+
+      var tbody = $('<tbody>');
+      table.append(tbody);
+      $(rows).each(function(idx, cols) {
+        var row = $('<tr>');
+        tbody.append(row);
+        $(cols).each(function(idx, col) { row.append($('<td>').text(col)); });
+      });
+
+      return table;
+    };
+
+    worker.postMessage({action: 'open'});
+    $(window.location.search.substring(1).split('&')).each(function(idx, p) {
+      if (p.startsWith('seed=')) {
+        $.get(p.split('=')[1], function(data) {
+          runSql(data);
+          //runSqlFromEditor();
+        });
+      }
+    })
+  </script>
+</body>
+</html>
+
