@@ -112,15 +112,23 @@
       return table;
     };
 
+    function getQueryParam(name) {
+      var el = $.grep(window.location.search.substring(1).split('&'), function(el) { return el.indexOf(name + '=') == 0 });
+      return el.length? el[0].split('=')[1] : undefined;
+    }
+
     worker.postMessage({action: 'open'});
-    $(window.location.search.substring(1).split('&')).each(function(idx, p) {
-      if (p.indexOf('seed=') == 0) {
-        $.get(p.split('=')[1], function(data) {
-          runSql(data);
-          //runSqlFromEditor();
-        });
-      }
-    })
+
+    var
+      seed = getQueryParam('seed'),
+      greeting = getQueryParam('greeting');
+
+    if (seed) {
+      $.get(seed, runSql);
+    }
+    if (greeting) {
+      $.get(greeting, $.proxy(editor.setValue, editor));
+    }
   </script>
 </body>
 </html>
